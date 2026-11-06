@@ -1,0 +1,46 @@
+name: Build
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        # One entry per deployable: <dir>/Dockerfile builds <image>.
+        include:
+          - dir: api
+            image: ghcr.io/eliferpg/backend
+    env:
+      DIR: ${{ matrix.dir }}
+      IMAGE: ${{ matrix.image }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build image
+        run: docker build -t "$IMAGE:ci" "$DIR"
+
+      # Every Renovate bump (runtime or backend release) goes through this before it can be merged.
+      - name: Smoke test (boots and reports healthy)
+        run: scripts/smoke-test.sh "$IMAGE:ci"
+
+      - name: Push image
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        env:
+          ACTOR: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          echo "$GITHUB_TOKEN" | docker login ghcr.io -u "$ACTOR" --password-stdin
+          VERSION=$(sed -n 's/^ENV ELIFERPG_BACKEND_VERSION=//p' "$DIR/Dockerfile")
+          for tag in latest "$VERSION" "sha-${GITHUB_SHA::7}"; do
+            docker tag "$IMAGE:ci" "$IMAGE:$tag"
+            docker push "$IMAGE:$tag"
+          done
