@@ -5,7 +5,7 @@
 # the image, so `docker inspect` shows which release it contains. Either bump only ships once CI's
 # smoke test (scripts/smoke-test.sh) has booted the combination.
 
-FROM mcr.microsoft.com/dotnet/aspnet:11.0.0-preview.6 AS runtime
+FROM mcr.microsoft.com/dotnet/aspnet:11.0.0-preview.6@sha256:80b7acce1eee1faeec905a084fedfa7d99a3b2dbd5d09a2c51f15a55022e9772 AS runtime
 # renovate: datasource=github-releases depName=ELifeRPG/backend
 ENV ELIFERPG_BACKEND_VERSION=0.1.0
 
